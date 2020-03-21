@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+}
+
+version '1.1'
+ext.rundeckVersion='3.1.2-20190927'
+defaultTasks 'clean','build'
+apply plugin: 'java'
+apply plugin: 'idea'
+ext.rundeckPluginVersion= '1.2'
+
+sourceCompatibility = 1.8
+
+ext.pluginClassNames='com.rundeck.plugin.nodesource.sql.SQLResourceModelSourceFactory'
+
+repositories {
+    mavenCentral()
+}
+
+configurations{
+    //declare custom pluginLibs configuration to include only libs for this plugin
+    pluginLibs
+
+    //declare compile to extend from pluginLibs so it inherits the dependencies
+    compile{
+        extendsFrom pluginLibs
+    }
+}
+
+dependencies {
+    pluginLibs group: 'com.oracle.ojdbc', name: 'ojdbc8', version: '19.3.0.0'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile group: 'org.rundeck', name: 'rundeck-core', version: rundeckVersion
+}
+
+// task to copy plugin libs to output/lib dir
+task copyToLib(type: Copy) {
+    into "$buildDir/output/lib"
+    from configurations.pluginLibs
+}
+
+jar {
+    from "$buildDir/output"
+    manifest {
+        def libList = configurations.pluginLibs.collect{'lib/'+it.name}.join(' ')
+        attributes 'Rundeck-Plugin-Name' : 'SQL Resource Model Source Plugin'
+        attributes 'Rundeck-Plugin-Description' : 'Obtains node information from SQL Databases'
+        attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '3.0.2+'
+        attributes 'Rundeck-Plugin-Tags': 'java,resource model,sql'
+        /*attributes 'Rundeck-Plugin-Source-Link': 'https://github.com/mikesuding/nodes-in-SQL'*/
+        attributes 'Rundeck-Plugin-Target-Host-Compatibility': 'all'
+        attributes 'Rundeck-Plugin-Author': 'Rundeck, Inc.'
+        attributes 'Rundeck-Plugin-Classnames': pluginClassNames
+        attributes 'Rundeck-Plugin-File-Version': version
+        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion, 'Rundeck-Plugin-Archive': 'true'
+        attributes 'Rundeck-Plugin-Libs': "${libList}"
+        attributes 'Class-Path': "${libList} lib/rundeck-core-${rundeckVersion}.jar"
+    }
+}
+//set jar task to depend on copyToLib
+jar.dependsOn(copyToLib)
